@@ -829,9 +829,11 @@ class MainWindow(QMainWindow):
         self._raw_pov_path = None
         self._apply_parsed_scene(scene)
         self._submit(final=False, quality_override=full_command_quality(1024, 768))
+        source = ("；元素/键级来自 POV 内嵌元数据"
+                  if scene.metadata_used else "")
         self.statusBar().showMessage(
             f"已导入 {os.path.basename(pov_path)}：{scene.structure.summary()}"
-            "  ·  已按 Avogadro 完整命令行复现，可继续调整参数")
+            f"{source}  ·  已按 Avogadro 完整命令行复现，可继续调整参数")
 
     def _render_raw_pov(self) -> None:
         pov_path, _ = QFileDialog.getOpenFileName(

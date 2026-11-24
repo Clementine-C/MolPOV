@@ -286,6 +286,61 @@ class SceneTests(unittest.TestCase):
         self.assertEqual(guess_element((0.0137, 0.871, 0.0137), 0.5), "Cl")
         self.assertEqual(guess_element((0.12, 0.94, 0.12), 0.5), "Cl")
 
+    def test_pov_metadata_restores_elements_and_bonds(self) -> None:
+        from molpov.povparse import read_pov_scene
+        from molpov.structure import Atom, Bond, Structure
+
+        structure = Structure(atoms=[
+            Atom("P", 0.0, 0.0, 0.0, index=0),
+            Atom("F", 1.6, 0.0, 0.0, index=1),
+            Atom("O", -1.3, 0.0, 0.0, index=2),
+            Atom("C", 0.0, 1.6, 0.0, index=3),
+        ])
+        structure.bonds = [Bond(0, 1, 1.0), Bond(0, 2, 2.0), Bond(0, 3, 1.0)]
+        # Recolour P to blue: without the metadata it would be guessed as N.
+        params = sdl.SceneParams(alpha=False, palette="custom",
+                                 custom_colors={"P": (48, 80, 248)})
+        text = sdl.generate_pov(structure, params)
+        self.assertIn("MOLPOV_META", text)
+        scene = read_pov_scene(text)
+        self.assertTrue(scene.metadata_used)
+        self.assertEqual([atom.element for atom in scene.structure.atoms],
+                         ["P", "F", "O", "C"])
+        self.assertEqual(
+            [(bond.a, bond.b, int(round(bond.order)))
+             for bond in scene.structure.bonds],
+            [(0, 1, 1), (0, 2, 2), (0, 3, 1)])
+
+    def test_pov_metadata_rejected_when_geometry_changes(self) -> None:
+        from molpov.povparse import read_pov_scene
+        from molpov.structure import Atom, Structure
+
+        structure = Structure(atoms=[
+            Atom("P", 1.6, 0.0, 0.0, index=0),
+            Atom("C", 0.0, 0.0, 0.0, index=1),
+        ])
+        text = sdl.generate_pov(structure, sdl.SceneParams(alpha=False))
+        tampered = text.replace(
+            "<1.60000, 0.00000, 0.00000>", "<2.90000, 0.00000, 0.00000>")
+        scene = read_pov_scene(tampered)
+        self.assertFalse(scene.metadata_used)
+        self.assertTrue(scene.notes)
+
+    def test_avogadro_colors_include_halogens(self) -> None:
+        from molpov.povparse import guess_element, read_pov
+
+        # Avogadro uses OpenBabel's table: F is light blue (0.5, 0.7, 1.0),
+        # which used to fall through every rule and became C.
+        self.assertEqual(guess_element((0.5, 0.7, 1.0), 0.44), "F")
+        self.assertEqual(guess_element((0.12, 0.94, 0.12), 0.53), "Cl")
+        self.assertEqual(guess_element((0.65, 0.16, 0.16), 0.55), "Br")
+        self.assertEqual(guess_element((0.58, 0.0, 0.58), 0.55), "I")
+        text = (
+            "sphere { <0,0,0>, 0.44 pigment { rgb <0.5,0.7,1.0> } }\n"
+            "sphere { <1.35,0,0>, 0.4 pigment { rgb <0.4,0.4,0.4> } }\n")
+        self.assertEqual([atom.element for atom in read_pov(text).atoms],
+                         ["F", "C"])
+
     def test_read_pov_rejects_empty_scene(self) -> None:
         from molpov.povparse import read_pov
 
