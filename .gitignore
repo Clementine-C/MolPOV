@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+_out/
+_tools/
+build/
+dist/
+docs/screenshot_pov.png
+*.pov
+*.png
+!docs/screenshot.png
+upload/
