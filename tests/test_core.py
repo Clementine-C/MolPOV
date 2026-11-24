@@ -265,6 +265,27 @@ class SceneTests(unittest.TestCase):
         self.assertEqual(guess_element((1.0, 0.2158, 0.0), 0.51), "P")
         self.assertEqual(guess_element((1.0, 0.05, 0.05), 0.46), "O")
 
+    def test_read_pov_keeps_halogens(self) -> None:
+        from molpov.povparse import guess_element, read_pov
+        from molpov.structure import Atom, Structure
+
+        structure = Structure(atoms=[
+            Atom("F", 0.0, 0.0, 0.0, index=0),
+            Atom("Cl", 1.6, 0.0, 0.0, index=1),
+            Atom("C", 3.0, 0.0, 0.0, index=2),
+        ])
+        structure.perceive_bonds()
+        # The exported sphere size follows atom_scale, so element inference must
+        # not depend on the radius.
+        for scale in (0.20, 0.28, 0.35, 0.45):
+            params = sdl.SceneParams(alpha=False, atom_scale=scale)
+            text = sdl.generate_pov(structure, params)
+            elements = [atom.element for atom in read_pov(text).atoms]
+            self.assertEqual(elements, ["F", "Cl", "C"], f"scale={scale}")
+        self.assertEqual(guess_element((0.279, 0.744, 0.080), 0.5), "F")
+        self.assertEqual(guess_element((0.0137, 0.871, 0.0137), 0.5), "Cl")
+        self.assertEqual(guess_element((0.12, 0.94, 0.12), 0.5), "Cl")
+
     def test_read_pov_rejects_empty_scene(self) -> None:
         from molpov.povparse import read_pov
 

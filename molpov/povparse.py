@@ -183,8 +183,11 @@ def guess_element(colour: Tuple[float, float, float], radius: float) -> str:
         return "Fe"
     if b >= 0.45 and r < 0.45:
         return "N"
-    if g > 0.5 and r < 0.5 and b < 0.55:
-        return "F" if radius < 0.42 else "Cl"
+    if g > 0.45 and r < 0.65 and b < 0.6:
+        # F and Cl are both greenish; the red channel separates them (F has a
+        # clear yellow component, Cl is almost pure green). Radius is not
+        # reliable because the exported sphere size depends on atom_scale.
+        return "F" if r >= 0.18 else "Cl"
     return "C"
 
 
